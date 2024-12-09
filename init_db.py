@@ -18,10 +18,15 @@ def initialize_database():
     # Tabelle users erstellen
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             money_amount REAL NOT NULL
         )
+    ''')
+
+    # Benutzer "ZugKasse" hinzufügen
+    cursor.execute('''
+        INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (69, 'ZugKasse', 0)
     ''')
 
     # Tabelle purchase_history erstellen
