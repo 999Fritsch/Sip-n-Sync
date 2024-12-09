@@ -53,6 +53,20 @@ class DBHandler:
         """
         self.cursor.execute('UPDATE products SET current_amount = current_amount + ? WHERE id = ?', (amount, product_id))
         self.conn.commit()
+    
+    def add_money_to_user(self, user_id, amount):
+        """
+        Adds the specified amount of money to the user's account.
+
+        Args:
+            user_id (int): The ID of the user to update.
+            amount (float): The amount of money to add to the user's account.
+
+        Returns:
+            None
+        """
+        self.cursor.execute('UPDATE users SET money_amount = money_amount + ? WHERE id = ?', (amount, user_id))
+        self.conn.commit()
 
     def buy_energy(self, user_id, product_id, amount):
         """
