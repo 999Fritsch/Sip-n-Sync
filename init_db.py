@@ -18,7 +18,7 @@ def initialize_database():
     # Tabelle users erstellen
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             money_amount REAL NOT NULL
         )
