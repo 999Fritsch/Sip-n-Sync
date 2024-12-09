@@ -81,16 +81,14 @@ class DBHandler:
             ValueError: If the product is not found.
             ValueError: If there is not enough product in stock.
             ValueError: If the user is not found.
-            ValueError: If the user does not have enough money.
 
         Performs the following steps:
             1. Retrieves product information from the database.
             2. Checks if there is enough product in stock.
             3. Retrieves user information from the database.
-            4. Checks if the user has enough money.
-            5. Updates the product stock and user's money amount.
-            6. Inserts a record into the purchase history.
-            7. Commits the transaction to the database.
+            4. Updates the product stock and user's money amount.
+            5. Inserts a record into the purchase history.
+            6. Commits the transaction to the database.
         """
         # Produktinformationen abrufen
         self.cursor.execute('SELECT current_amount, price FROM products WHERE id = ?', (product_id,))
@@ -110,8 +108,6 @@ class DBHandler:
 
         money_amount = user[0]
         total_cost = price * amount
-        if money_amount < total_cost:
-            raise ValueError("Nicht genügend Geld")
 
         # Kauf durchführen
         self.cursor.execute('UPDATE products SET current_amount = current_amount - ? WHERE id = ?', (amount, product_id))
