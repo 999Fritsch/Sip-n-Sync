@@ -1,7 +1,6 @@
 import sys
 import sqlite3
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLineEdit, QMessageBox, QWidget, QPushButton, QGridLayout
-from numpad import Numpad
 
 class Numpad(QWidget):
     def __init__(self, input_field, enter_callback):
