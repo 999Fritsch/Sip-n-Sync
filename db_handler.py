@@ -9,6 +9,7 @@ class DBHandler:
             db_name (str): The name of the database file to connect to. Defaults to 'energy_drinks.db'.
         """
         self.connect(db_name)
+        self.map_flavor_to_id()
 
     def create_user(self, user_id, name, money_amount):
         """
@@ -22,7 +23,7 @@ class DBHandler:
         Returns:
             None
         """
-        self.cursor.execute('INSERT INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
+        self.cursor.execute('INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
         self.conn.commit()
 
     def create_product(self, name, current_amount, price):
@@ -68,7 +69,7 @@ class DBHandler:
         self.cursor.execute('UPDATE users SET money_amount = money_amount + ? WHERE id = ?', (amount, user_id))
         self.conn.commit()
 
-    def buy_energy(self, user_id, product_id, amount):
+    def buy_energy_by_id(self, user_id, product_id, amount):
         """
         Processes the purchase of energy by a user.
 
@@ -115,6 +116,34 @@ class DBHandler:
         self.cursor.execute('INSERT INTO purchase_history (product_id, user_id, amount) VALUES (?, ?, ?)', (product_id, user_id, amount))
 
         self.conn.commit()
+
+    def buy_energy_by_flavor(self, user_id, flavor_name, amount):
+        """
+        Purchase energy of a specific flavor for a user.
+
+        Args:
+            user_id (int): The ID of the user making the purchase.
+            flavor_name (str): The name of the flavor to purchase.
+            amount (int): The amount of energy to purchase.
+
+        Raises:
+            KeyError: If the flavor_name is not found in the flavor mapping.
+        """
+        self.flavors = self.map_flavor_to_id()
+        self.buy_energy_by_id(user_id, self.flavors[flavor_name], amount)
+
+    def map_flavor_to_id(self):
+        """
+        Maps product flavors to their corresponding IDs.
+
+        Returns:
+            dict: A dictionary with product flavors as keys and product IDs as values.
+        """
+        self.cursor.execute('SELECT id, name FROM products')
+        products = self.cursor.fetchall()
+        flavor_to_id = {name: product_id for product_id, name in products}
+        self.flavors = flavor_to_id
+        return flavor_to_id
 
     def close(self):
         """
