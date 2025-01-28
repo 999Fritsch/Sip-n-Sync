@@ -35,9 +35,21 @@ class MainWindow(QMainWindow):
         
         self.ui.textBrowser_warenkorb.setText(formatted_text)
 
+    def removeItem(self, flavor):
+        if flavor in self.warenkorb.keys():
+            if self.warenkorb[flavor] > 1:
+                self.warenkorb[flavor] -= 1
+            else:
+                del self.warenkorb[flavor]
+        
+        # Build the formatted string
+        formatted_text = "\n".join([f"{key} x{value}" for key, value in self.warenkorb.items()])
+        
+        self.ui.textBrowser_warenkorb.setText(formatted_text)
+
     def order(self):
         id = self.ui.textEdit_id.toPlainText()
-        if id == "" or id.__len__() < 8:
+        if id == "" or id.__len__() < 8 and int(id) != 69:
             print("Bitte  gültige ID eingeben")
         elif self.warenkorb.__len__() == 0:
             print("Bitte mindestens ein Getränk auswählen")

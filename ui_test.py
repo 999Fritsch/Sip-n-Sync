@@ -17,7 +17,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QMenuBar,
     QPushButton, QSizePolicy, QStatusBar, QTextBrowser,
-    QTextEdit, QWidget, QVBoxLayout)
+    QTextEdit, QWidget, QVBoxLayout, QHBoxLayout)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -60,12 +60,22 @@ class Ui_MainWindow(object):
     def add_dynamic_widgets(self, MainWindow, products):
         layout = QVBoxLayout(self.dynamicWidget)
         for product in products:
+            product_layout = QHBoxLayout()
+            
             label = QLabel(self.dynamicWidget)
             label.setText(product['name'])
-            button = QPushButton(self.dynamicWidget)
-            button.setText("add")
-            button.clicked.connect(lambda _, p=product: MainWindow.addItem(p['name']))
-            layout.addWidget(label)
-            layout.addWidget(button)
+            product_layout.addWidget(label)
+            
+            button_add = QPushButton(self.dynamicWidget)
+            button_add.setText("add")
+            button_add.clicked.connect(lambda _, p=product: MainWindow.addItem(p['name']))
+            product_layout.addWidget(button_add)
+            
+            button_remove = QPushButton(self.dynamicWidget)
+            button_remove.setText("remove")
+            button_remove.clicked.connect(lambda _, p=product: MainWindow.removeItem(p['name']))
+            product_layout.addWidget(button_remove)
+            
+            layout.addLayout(product_layout)
         self.dynamicWidget.setLayout(layout)
 
