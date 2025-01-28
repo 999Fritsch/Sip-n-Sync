@@ -128,6 +128,16 @@
      <string>add</string>
     </property>
    </widget>
+   <widget class="QWidget" name="dynamicWidget">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>120</y>
+      <width>600</width>
+      <height>600</height>
+     </rect>
+    </property>
+   </widget>
    <widget class="QTextBrowser" name="textBrowser_warenkorb">
     <property name="geometry">
      <rect>

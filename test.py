@@ -12,14 +12,17 @@ class MainWindow(QMainWindow):
         self.warenkorb = {}
         self.DBHandler = DBHandler()
 
-        # Connect buttons to addItem method
-        self.ui.pushButton_mango_loco.clicked.connect(lambda: self.addItem("Mango Loco"))
-        self.ui.pushButton_assaulted.clicked.connect(lambda: self.addItem("Assault"))
-        self.ui.pushButton_ultra_fiesta.clicked.connect(lambda: self.addItem("Ultra Fiesta"))
-        self.ui.pushButton_bad_apple.clicked.connect(lambda: self.addItem("Bad Apple"))
+        # Fetch products from the database
+        products = self.fetch_products()
+        self.ui.add_dynamic_widgets(self, products)
 
         # Connect bestellen button to order method
         self.ui.pushButton_bestellen.clicked.connect(self.order)
+
+    def fetch_products(self):
+        self.DBHandler.cursor.execute('SELECT id, name FROM products')
+        products = self.DBHandler.cursor.fetchall()
+        return [{'id': product[0], 'name': product[1]} for product in products]
 
     def addItem(self, flavor):
         if flavor in self.warenkorb.keys():
