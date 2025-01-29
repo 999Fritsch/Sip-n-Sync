@@ -64,6 +64,7 @@ class MainWindow(QMainWindow):
             self.ui.textBrowser_warenkorb.setText("")
             self.ui.textEdit_id.setText("")
             print("Bestellt")
+            self.ui.label_order_confirmation.setText("Bestellung erfolgreich!")
 
     def check_id(self):
         user_id = self.ui.textEdit_id.toPlainText().strip()
@@ -71,9 +72,11 @@ class MainWindow(QMainWindow):
             if self.DBHandler.check_user_id(user_id):
                 self.ui.label_id_confirmation.setText("ID exists in the database")
                 self.ui.label_id_confirmation.setStyleSheet("color: green;")
+                self.ui.label_order_confirmation.setText("")
             else:
                 self.ui.label_id_confirmation.setText("ID does not exist in the database")
                 self.ui.label_id_confirmation.setStyleSheet("color: red;")
+                self.ui.label_order_confirmation.setText("")
         else:
             self.ui.label_id_confirmation.setText("")
 
