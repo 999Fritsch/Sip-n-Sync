@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
                 self.DBHandler.buy_energy_by_flavor(id, flavor, amount)
             self.warenkorb = {}
             self.ui.textBrowser_warenkorb.setText("")
+            self.ui.textEdit_id.setText("")
             print("Bestellt")
 
     def check_id(self):
