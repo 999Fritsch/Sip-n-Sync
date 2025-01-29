@@ -38,6 +38,10 @@ class Ui_MainWindow(object):
         self.pushButton_bestellen = QPushButton(self.centralwidget)
         self.pushButton_bestellen.setObjectName(u"pushButton_bestellen")
         self.pushButton_bestellen.setGeometry(QRect(1280, 800, 281, 91))
+        self.label_id_confirmation = QLabel(self.centralwidget)
+        self.label_id_confirmation.setObjectName(u"label_id_confirmation")
+        self.label_id_confirmation.setGeometry(QRect(20, 110, 451, 21))
+        self.label_id_confirmation.setStyleSheet("color: red;")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
@@ -55,6 +59,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.pushButton_bestellen.setText(QCoreApplication.translate("MainWindow", u"bestellen", None))
+        self.label_id_confirmation.setText("")
     # retranslateUi
 
     def add_dynamic_widgets(self, MainWindow, products):

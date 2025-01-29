@@ -144,6 +144,20 @@ class DBHandler:
         flavor_to_id = {name: product_id for product_id, name in products}
         self.flavors = flavor_to_id
         return flavor_to_id
+    
+    def check_user_id(self, user_id):
+        """
+        Checks if a user ID exists in the users table.
+
+        Args:
+            user_id (int): The ID of the user to check.
+
+        Returns:
+            bool: True if the user ID exists, False otherwise.
+        """
+        self.cursor.execute('SELECT COUNT(*) FROM users WHERE id = ?', (user_id,))
+        result = self.cursor.fetchone()
+        return result[0] > 0
 
     def close(self):
         """

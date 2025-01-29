@@ -18,6 +18,9 @@ class MainWindow(QMainWindow):
 
         # Connect bestellen button to order method
         self.ui.pushButton_bestellen.clicked.connect(self.order)
+        
+        # Connect textEdit_id textChanged signal to check_id method
+        self.ui.textEdit_id.textChanged.connect(self.check_id)
 
     def fetch_products(self):
         self.DBHandler.cursor.execute('SELECT id, name FROM products')
@@ -60,6 +63,18 @@ class MainWindow(QMainWindow):
             self.warenkorb = {}
             self.ui.textBrowser_warenkorb.setText("")
             print("Bestellt")
+
+    def check_id(self):
+        user_id = self.ui.textEdit_id.toPlainText().strip()
+        if user_id:
+            if self.DBHandler.check_user_id(user_id):
+                self.ui.label_id_confirmation.setText("ID exists in the database")
+                self.ui.label_id_confirmation.setStyleSheet("color: green;")
+            else:
+                self.ui.label_id_confirmation.setText("ID does not exist in the database")
+                self.ui.label_id_confirmation.setStyleSheet("color: red;")
+        else:
+            self.ui.label_id_confirmation.setText("")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
