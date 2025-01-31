@@ -1,6 +1,6 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QFile
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtCore import QFile
 from ui_test import Ui_MainWindow
 from db_handler import DBHandler
 
