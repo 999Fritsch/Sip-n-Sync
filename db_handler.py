@@ -11,6 +11,13 @@ class DBHandler:
         self.connect(db_name)
         self.map_flavor_to_id()
 
+    def fetch_products(self):
+        """Fetches product id and name from the database."""
+        self.cursor.execute('SELECT id, name FROM products')
+        products = self.cursor.fetchall()
+        # Return a list of dictionaries for easier template usage.
+        return [{'id': p[0], 'name': p[1]} for p in products]
+
     def create_user(self, user_id, name, money_amount):
         """
         Creates a new user in the database.
