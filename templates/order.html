@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Energy Drink Bestellung</title>
+    <style>
+        .product-column {
+            float: left;
+            width: 33%;
+            padding: 0px;
+        }
+        .product-column table {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Energy Drink Bestellung</h1>
+    
+    <!-- Display flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul style="list-style: none;">
+          {% for category, message in messages %}
+            <li style="color: 
+                {% if category == 'error' %}red
+                {% elif category == 'success' %}green
+                {% else %}black{% endif %};">
+              {{ message }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    
+    <!-- Display available products -->
+    {% set chunk_size = 5 %}
+    {% for i in range(0, products|length, chunk_size) %}
+    <div class="product-column">
+        <table border="1" cellpadding="5">
+            <tr>
+                <th>Produkt</th>
+                <th>Aktion</th>
+            </tr>
+            {% for product in products[i:i + chunk_size] %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>
+                    <!-- Form to add the product to the cart -->
+                    <form action="{{ url_for('index') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="flavor" value="{{ product.name }}">
+                        <button type="submit">Hinzufügen</button>
+                    </form>
+                    <!-- Form to remove the product from the cart -->
+                    <form action="{{ url_for('index') }}" method="post" style="display:inline;">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="flavor" value="{{ product.name }}">
+                        <button type="submit">Entfernen</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endfor %}
+    <div style="clear: both;"></div>
+    
+    <!-- Display current cart -->
+    <h2>Warenkorb</h2>
+    {% if cart %}
+        <ul>
+            {% for flavor, amount in cart.items() %}
+                <li>{{ flavor }} x{{ amount }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Ihr Warenkorb ist leer.</p>
+    {% endif %}
+    
+    <!-- Order Form -->
+    <h2>Bestellung aufgeben</h2>
+    <form action="{{ url_for('index') }}" method="post">
+        <label for="user_id">Benutzer-ID:</label>
+        <input type="text" name="user_id" id="user_id" required>
+        <input type="hidden" name="action" value="order">
+        <button type="submit">Bestellen</button>
+    </form>
+</body>
+</html>
