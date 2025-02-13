@@ -18,6 +18,7 @@ class DBHandler:
         # Return a list of dictionaries for easier template usage.
         return [{'id': p[0], 'name': p[1]} for p in products]
 
+
     def create_user(self, user_id, name, money_amount):
         """
         Creates a new user in the database.
@@ -166,7 +167,7 @@ class DBHandler:
         self.cursor.execute('SELECT COUNT(*) FROM users WHERE id = ?', (user_id,))
         result = self.cursor.fetchone()
         return result[0] > 0
-
+      
     def close(self):
         """
         Closes the database connection.
