@@ -35,8 +35,8 @@ class DBHandler:
             raise ValueError("Produkt nicht gefunden")
 
         current_amount, price = product
-        if current_amount < amount:
-            raise ValueError("Nicht genügend Produkt auf Lager")
+        # if current_amount < amount:
+        #     raise ValueError("Nicht genügend Produkt auf Lager")
 
         self.cursor.execute('SELECT money_amount FROM users WHERE id = ?', (user_id,))
         user = self.cursor.fetchone()
