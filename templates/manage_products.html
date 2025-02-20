@@ -59,6 +59,19 @@
                 <button type="submit" class="btn">Bestand auffüllen</button>
             </form>
         </section>
+
+        <!-- Deposit Return Form -->
+        <section class="product-section">
+            <h2>Pfand zurückgegeben</h2>
+            <form method="POST" action="{{ url_for('manage_products') }}">
+                <input type="hidden" name="action" value="deposit">
+                <div class="form-group">
+                    <label for="deposit_amount">Pfandbetrag (€):</label>
+                    <input type="number" id="deposit_amount" name="deposit_amount" step="0.01" min="0.01" required>
+                </div>
+                <button type="submit" class="btn">Pfand zur Zugkasse hinzufügen</button>
+            </form>
+        </section>
         
         <div class="navigation">
             <a href="{{ url_for('index') }}" class="btn">Zurück zur Bestellung</a>

@@ -292,6 +292,25 @@ def manage_products():
             except Exception as e:
                 flash(str(e), "error")
 
+        elif action == "deposit":
+            amount = request.form.get("deposit_amount", "").strip()
+
+            # Validate input
+            try:
+                float_amount = float(amount)
+                if float_amount <= 0:
+                    raise ValueError()
+            except ValueError:
+                flash("Bitte gültigen Pfandbetrag eingeben", "error")
+                return redirect(url_for("manage_products"))
+
+            # Add deposit to Zugkasse (ID 69)
+            try:
+                db_handler.add_money_to_user(69, float_amount)
+                flash(f"Pfand in Höhe von {float_amount}€ wurde zur Zugkasse hinzugefügt!", "success")
+            except Exception as e:
+                flash(str(e), "error")
+
         return redirect(url_for("manage_products"))
 
     # For GET request: fetch products from the database
