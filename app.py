@@ -68,6 +68,26 @@ class DBHandler:
     def close(self):
         self.conn.close()
 
+    def create_user(self, user_id, name, money_amount):
+        """Creates a new user in the database."""
+        self.cursor.execute('INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
+        self.conn.commit()
+
+    def create_product(self, name, current_amount, price):
+        """Inserts a new product into the products table."""
+        self.cursor.execute('INSERT INTO products (name, current_amount, price) VALUES (?, ?, ?)', (name, current_amount, price))
+        self.conn.commit()
+
+    def add_product_storage(self, product_id, amount):
+        """Adds the specified amount to the current storage of the product."""
+        self.cursor.execute('UPDATE products SET current_amount = current_amount + ? WHERE id = ?', (amount, product_id))
+        self.conn.commit()
+
+    def add_money_to_user(self, user_id, amount):
+        """Adds the specified amount of money to the user's account."""
+        self.cursor.execute('UPDATE users SET money_amount = money_amount + ? WHERE id = ?', (amount, user_id))
+        self.conn.commit()
+
 
 # ---------------------------
 # Flask App Setup
