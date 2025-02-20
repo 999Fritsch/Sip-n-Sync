@@ -86,5 +86,12 @@
         <input type="hidden" name="action" value="order">
         <button type="submit">Bestellen</button>
     </form>
+
+    <div class="navigation">
+        <a href="{{ url_for('index') }}" class="btn">Zurück zur Bestellung</a>
+        <a href="{{ url_for('add_money') }}" class="btn">Geld hinzufügen</a>
+        <a href="{{ url_for('add_user') }}" class="btn">Neuen Benutzer erstellen</a>
+        <a href="{{ url_for('manage_products') }}" class="btn">Produkte verwalten</a>
+    </div>
 </body>
 </html>

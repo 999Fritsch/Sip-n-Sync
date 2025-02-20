@@ -164,6 +164,141 @@ def index():
     return render_template("order.html", products=products, cart=cart)
 
 
+@app.route("/add_money", methods=["GET", "POST"])
+def add_money():
+    if request.method == "POST":
+        user_id = request.form.get("user_id", "").strip()
+        amount = request.form.get("amount", "").strip()
+
+        # Validate input
+        try:
+            int_user_id = int(user_id)
+            float_amount = float(amount)
+        except ValueError:
+            flash("Bitte gültige ID und Betrag eingeben", "error")
+            return redirect(url_for("add_money"))
+
+        # Validate user ID format
+        if user_id == "" or (len(user_id) < 8 and int_user_id != 69):
+            flash("Bitte gültige ID eingeben", "error")
+            return redirect(url_for("add_money"))
+
+        # Check if user exists
+        if not db_handler.check_user_id(int_user_id):
+            flash("ID existiert nicht in der Datenbank", "error")
+            return redirect(url_for("add_money"))
+
+        # Add money to user's account
+        try:
+            db_handler.add_money_to_user(int_user_id, float_amount)
+            flash(f"{float_amount}€ wurden erfolgreich zum Konto hinzugefügt!", "success")
+        except Exception as e:
+            flash(str(e), "error")
+
+        return redirect(url_for("add_money"))
+
+    return render_template("add_money.html")
+
+
+@app.route("/add_user", methods=["GET", "POST"])
+def add_user():
+    if request.method == "POST":
+        user_id = request.form.get("user_id", "").strip()
+        name = request.form.get("name", "").strip()
+        initial_amount = request.form.get("initial_amount", "0").strip()
+
+        # Validate input
+        try:
+            int_user_id = int(user_id)
+            float_amount = float(initial_amount)
+        except ValueError:
+            flash("Bitte gültige ID und Betrag eingeben", "error")
+            return redirect(url_for("add_user"))
+
+        # Validate user ID format
+        if user_id == "" or (len(user_id) < 8 and int_user_id != 69):
+            flash("Bitte gültige ID eingeben (mindestens 8 Stellen)", "error")
+            return redirect(url_for("add_user"))
+
+        # Validate name
+        if not name:
+            flash("Bitte einen Namen eingeben", "error")
+            return redirect(url_for("add_user"))
+
+        # Check if user already exists
+        if db_handler.check_user_id(int_user_id):
+            flash("Diese ID existiert bereits", "error")
+            return redirect(url_for("add_user"))
+
+        # Create new user
+        try:
+            db_handler.create_user(int_user_id, name, float_amount)
+            flash(f"Benutzer {name} wurde erfolgreich erstellt!", "success")
+        except Exception as e:
+            flash(str(e), "error")
+
+        return redirect(url_for("add_user"))
+
+    return render_template("add_user.html")
+
+
+@app.route("/manage_products", methods=["GET", "POST"])
+def manage_products():
+    if request.method == "POST":
+        action = request.form.get("action")
+
+        if action == "create":
+            name = request.form.get("name", "").strip()
+            amount = request.form.get("amount", "").strip()
+            price = request.form.get("price", "").strip()
+
+            # Validate input
+            try:
+                float_amount = float(amount)
+                float_price = float(price)
+            except ValueError:
+                flash("Bitte gültige Werte für Menge und Preis eingeben", "error")
+                return redirect(url_for("manage_products"))
+
+            if not name:
+                flash("Bitte einen Produktnamen eingeben", "error")
+                return redirect(url_for("manage_products"))
+
+            # Create new product
+            try:
+                db_handler.create_product(name, float_amount, float_price)
+                flash(f"Produkt {name} wurde erfolgreich erstellt!", "success")
+                # Refresh flavor mappings after creating new product
+                db_handler.map_flavor_to_id()
+            except Exception as e:
+                flash(str(e), "error")
+
+        elif action == "refill":
+            product_id = request.form.get("product_id")
+            amount = request.form.get("refill_amount", "").strip()
+
+            # Validate input
+            try:
+                int_product_id = int(product_id)
+                float_amount = float(amount)
+            except ValueError:
+                flash("Bitte gültige Werte eingeben", "error")
+                return redirect(url_for("manage_products"))
+
+            # Add to stock
+            try:
+                db_handler.add_product_storage(int_product_id, float_amount)
+                flash(f"Lagerbestand wurde um {float_amount} erhöht!", "success")
+            except Exception as e:
+                flash(str(e), "error")
+
+        return redirect(url_for("manage_products"))
+
+    # For GET request: fetch products from the database
+    products = db_handler.fetch_products()
+    return render_template("manage_products.html", products=products)
+
+
 # ---------------------------
 # Run the App
 # ---------------------------
