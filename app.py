@@ -50,6 +50,7 @@ class DBHandler:
         self.cursor.execute('UPDATE products SET current_amount = current_amount - ? WHERE id = ?', (amount, product_id))
         self.cursor.execute('UPDATE users SET money_amount = money_amount - ? WHERE id = ?', (total_cost, user_id))
         self.cursor.execute('INSERT INTO purchase_history (product_id, user_id, amount) VALUES (?, ?, ?)', (product_id, user_id, amount))
+        self.log_transaction('PURCHASE', user_id=user_id, product_id=product_id, amount=amount, description=f"Purchase at €{total_cost}")
         self.conn.commit()
 
     def buy_energy_by_flavor(self, user_id, flavor_name, amount):
@@ -71,21 +72,35 @@ class DBHandler:
     def create_user(self, user_id, name, money_amount):
         """Creates a new user in the database."""
         self.cursor.execute('INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
+        self.log_transaction('NEW_USER', user_id=user_id, amount=money_amount, description=f"New user created: {name}")
         self.conn.commit()
 
     def create_product(self, name, current_amount, price):
         """Inserts a new product into the products table."""
         self.cursor.execute('INSERT INTO products (name, current_amount, price) VALUES (?, ?, ?)', (name, current_amount, price))
+        product_id = self.cursor.lastrowid
+        self.log_transaction('NEW_PRODUCT', product_id=product_id, amount=current_amount, description=f"New product created: {name} at €{price}")
         self.conn.commit()
 
     def add_product_storage(self, product_id, amount):
         """Adds the specified amount to the current storage of the product."""
         self.cursor.execute('UPDATE products SET current_amount = current_amount + ? WHERE id = ?', (amount, product_id))
+        self.log_transaction('REFILL', product_id=product_id, amount=amount)
         self.conn.commit()
 
     def add_money_to_user(self, user_id, amount):
         """Adds the specified amount of money to the user's account."""
         self.cursor.execute('UPDATE users SET money_amount = money_amount + ? WHERE id = ?', (amount, user_id))
+        self.log_transaction('ADD_MONEY', user_id=user_id, amount=amount)
+        self.conn.commit()
+
+    def log_transaction(self, transaction_type, user_id=None, product_id=None, amount=0, description=None):
+        """Logs any transaction in the transaction_history table."""
+        self.cursor.execute('''
+            INSERT INTO transaction_history 
+            (transaction_type, user_id, product_id, amount, description)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (transaction_type, user_id, product_id, amount, description))
         self.conn.commit()
 
 

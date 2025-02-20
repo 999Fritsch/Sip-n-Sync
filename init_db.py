@@ -42,6 +42,21 @@ def initialize_database():
         )
     ''')
 
+    # Tabelle transaction_history erstellen
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transaction_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_type TEXT NOT NULL,  -- 'PURCHASE', 'DEPOSIT', 'REFILL', 'NEW_PRODUCT', 'NEW_USER', 'ADD_MONEY'
+            user_id INTEGER,                 -- NULL for NEW_PRODUCT
+            product_id INTEGER,              -- NULL for NEW_USER, ADD_MONEY, DEPOSIT
+            amount REAL NOT NULL,            -- Amount of products or money
+            description TEXT,                -- Additional details (e.g., product name for NEW_PRODUCT)
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+
     # Änderungen speichern und Verbindung schließen
     conn.commit()
     conn.close()
