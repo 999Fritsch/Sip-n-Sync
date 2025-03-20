@@ -1,38 +1,23 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sip-n-Sync</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <h1>Login</h1>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <form method="POST" action="{{ url_for('login') }}">
-            <div class="form-group">
-                <label for="user_id">Benutzer ID:</label>
-                <input type="number" id="user_id" name="user_id" required>
-            </div>
-            <button type="submit" class="btn">Login</button>
-        </form>
-        
-        <div class="navigation">
-            <a href="{{ url_for('index') }}" class="btn">Zurück zur Bestellung</a>
-            <a href="{{ url_for('add_money') }}" class="btn">Geld hinzufügen</a>
-            <a href="{{ url_for('add_user') }}" class="btn">Neuen Benutzer erstellen</a>
-            <a href="{{ url_for('manage_products') }}" class="btn">Produkte verwalten</a>
-            <a href="{{ url_for('logout') }}" class="btn">Abmelden</a>
+{% block title %}Login - Sip-n-Sync{% endblock %}
+
+{% block content %}
+    <h1>Login</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="user_id">Benutzer ID:</label>
+            <input type="number" id="user_id" name="user_id" required>
         </div>
-    </div>
-</body>
-</html>
+        <button type="submit" class="btn">Login</button>
+    </form>
+{% endblock %}

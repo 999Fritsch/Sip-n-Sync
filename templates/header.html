@@ -1,0 +1,11 @@
+<div class="user-info">
+    {% if user_info %}
+        <p style="margin: 0;">
+            <strong>Benutzer:</strong> {{ user_info.name }}
+            <span style="margin-left: 20px;">
+                <strong>Kontostand:</strong> {{ "%.2f"|format(user_info.balance) }}€
+            </span>
+        </p>
+        <a href="{{ url_for('logout') }}" style="text-decoration: none; background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 3px;">Abmelden</a>
+    {% endif %}
+</div>

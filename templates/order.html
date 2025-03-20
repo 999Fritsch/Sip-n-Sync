@@ -1,34 +1,23 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <title>Energy Drink Bestellung</title>
-    <style>
-        .product-column {
-            float: left;
-            width: 33%;
-            padding: 0px;
-        }
-        .product-column table {
-            width: 100%;
-        }
-    </style>
-</head>
-<body>
-    <div class="user-info" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
-        {% if user_info %}
-            <p style="margin: 0;">
-                <strong>Benutzer:</strong> {{ user_info.name }}
-                <span style="margin-left: 20px;">
-                    <strong>Kontostand:</strong> {{ "%.2f"|format(user_info.balance) }}€
-                </span>
-            </p>
-            <a href="{{ url_for('logout') }}" style="text-decoration: none; background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 3px;">Abmelden</a>
-        {% endif %}
-    </div>
+{% extends "base.html" %}
+
+{% block title %}Energy Drink Bestellung - Sip-n-Sync{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .product-column {
+        float: left;
+        width: 33%;
+        padding: 0px;
+    }
+    .product-column table {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
     <h1>Energy Drink Bestellung</h1>
     
-    <!-- Display flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <ul style="list-style: none;">
@@ -44,7 +33,6 @@
       {% endif %}
     {% endwith %}
     
-    <!-- Display available products -->
     {% set chunk_size = 5 %}
     {% for i in range(0, products|length, chunk_size) %}
     <div class="product-column">
@@ -57,13 +45,11 @@
             <tr>
                 <td>{{ product.name }}</td>
                 <td>
-                    <!-- Form to add the product to the cart -->
                     <form action="{{ url_for('index') }}" method="post" style="display:inline;">
                         <input type="hidden" name="action" value="add">
                         <input type="hidden" name="flavor" value="{{ product.name }}">
                         <button type="submit">Hinzufügen</button>
                     </form>
-                    <!-- Form to remove the product from the cart -->
                     <form action="{{ url_for('index') }}" method="post" style="display:inline;">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="flavor" value="{{ product.name }}">
@@ -77,7 +63,6 @@
     {% endfor %}
     <div style="clear: both;"></div>
     
-    <!-- Display current cart -->
     <h2>Warenkorb</h2>
     {% if cart %}
         <ul>
@@ -89,7 +74,6 @@
         <p>Ihr Warenkorb ist leer.</p>
     {% endif %}
     
-    <!-- Order Form -->
     <h2>Bestellung aufgeben</h2>
     <form action="{{ url_for('index') }}" method="post">
         <label for="user_id">Benutzer-ID:</label>
@@ -97,12 +81,4 @@
         <input type="hidden" name="action" value="order">
         <button type="submit">Bestellen</button>
     </form>
-
-    <div class="navigation">
-        <a href="{{ url_for('index') }}" class="btn">Zurück zur Bestellung</a>
-        <a href="{{ url_for('add_money') }}" class="btn">Geld hinzufügen</a>
-        <a href="{{ url_for('add_user') }}" class="btn">Neuen Benutzer erstellen</a>
-        <a href="{{ url_for('manage_products') }}" class="btn">Produkte verwalten</a>
-    </div>
-</body>
-</html>
+{% endblock %}

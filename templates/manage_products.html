@@ -1,95 +1,67 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produkte verwalten - Sip-n-Sync</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="user-info" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
-        {% if user_info %}
-            <p style="margin: 0;">
-                <strong>Benutzer:</strong> {{ user_info.name }}
-                <span style="margin-left: 20px;">
-                    <strong>Kontostand:</strong> {{ "%.2f"|format(user_info.balance) }}€
-                </span>
-            </p>
-            <a href="{{ url_for('logout') }}" style="text-decoration: none; background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 3px;">Abmelden</a>
+{% extends "base.html" %}
+
+{% block title %}Produkte verwalten - Sip-n-Sync{% endblock %}
+
+{% block content %}
+    <h1>Produkte verwalten</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
         {% endif %}
-    </div>
-    <div class="container">
-        <h1>Produkte verwalten</h1>
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    {% endwith %}
 
-        <!-- Create New Product Form -->
-        <section class="product-section">
-            <h2>Neues Produkt erstellen</h2>
-            <form method="POST" action="{{ url_for('manage_products') }}">
-                <input type="hidden" name="action" value="create">
-                <div class="form-group">
-                    <label for="name">Produktname:</label>
-                    <input type="text" id="name" name="name" required>
-                </div>
-                <div class="form-group">
-                    <label for="amount">Anfangsbestand:</label>
-                    <input type="number" id="amount" name="amount" step="1" min="0" required>
-                </div>
-                <div class="form-group">
-                    <label for="price">Preis (€):</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" required>
-                </div>
-                <button type="submit" class="btn">Produkt erstellen</button>
-            </form>
-        </section>
+    <section class="product-section">
+        <h2>Neues Produkt erstellen</h2>
+        <form method="POST" action="{{ url_for('manage_products') }}">
+            <input type="hidden" name="action" value="create">
+            <div class="form-group">
+                <label for="name">Produktname:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="amount">Anfangsbestand:</label>
+                <input type="number" id="amount" name="amount" step="1" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="price">Preis (€):</label>
+                <input type="number" id="price" name="price" step="0.01" min="0" required>
+            </div>
+            <button type="submit" class="btn">Produkt erstellen</button>
+        </form>
+    </section>
 
-        <!-- Refill Stock Form -->
-        <section class="product-section">
-            <h2>Lagerbestand auffüllen</h2>
-            <form method="POST" action="{{ url_for('manage_products') }}">
-                <input type="hidden" name="action" value="refill">
-                <div class="form-group">
-                    <label for="product_id">Produkt:</label>
-                    <select id="product_id" name="product_id" required>
-                        {% for product in products %}
-                            <option value="{{ product.id }}">{{ product.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="refill_amount">Menge hinzufügen:</label>
-                    <input type="number" id="refill_amount" name="refill_amount" step="1" min="1" required>
-                </div>
-                <button type="submit" class="btn">Bestand auffüllen</button>
-            </form>
-        </section>
+    <section class="product-section">
+        <h2>Lagerbestand auffüllen</h2>
+        <form method="POST" action="{{ url_for('manage_products') }}">
+            <input type="hidden" name="action" value="refill">
+            <div class="form-group">
+                <label for="product_id">Produkt:</label>
+                <select id="product_id" name="product_id" required>
+                    {% for product in products %}
+                        <option value="{{ product.id }}">{{ product.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="refill_amount">Menge hinzufügen:</label>
+                <input type="number" id="refill_amount" name="refill_amount" step="1" min="1" required>
+            </div>
+            <button type="submit" class="btn">Bestand auffüllen</button>
+        </form>
+    </section>
 
-        <!-- Deposit Return Form -->
-        <section class="product-section">
-            <h2>Pfand zurückgegeben</h2>
-            <form method="POST" action="{{ url_for('manage_products') }}">
-                <input type="hidden" name="action" value="deposit">
-                <div class="form-group">
-                    <label for="deposit_amount">Pfandbetrag (€):</label>
-                    <input type="number" id="deposit_amount" name="deposit_amount" step="0.01" min="0.01" required>
-                </div>
-                <button type="submit" class="btn">Pfand zur Zugkasse hinzufügen</button>
-            </form>
-        </section>
-        
-        <div class="navigation">
-            <a href="{{ url_for('index') }}" class="btn">Zurück zur Bestellung</a>
-            <a href="{{ url_for('add_money') }}" class="btn">Geld hinzufügen</a>
-            <a href="{{ url_for('add_user') }}" class="btn">Neuen Benutzer erstellen</a>
-            <a href="{{ url_for('manage_products') }}" class="btn">Produkte verwalten</a>
-        </div>
-    </div>
-</body>
-</html>
+    <section class="product-section">
+        <h2>Pfand zurückgegeben</h2>
+        <form method="POST" action="{{ url_for('manage_products') }}">
+            <input type="hidden" name="action" value="deposit">
+            <div class="form-group">
+                <label for="deposit_amount">Pfandbetrag (€):</label>
+                <input type="number" id="deposit_amount" name="deposit_amount" step="0.01" min="0.01" required>
+            </div>
+            <button type="submit" class="btn">Pfand zur Zugkasse hinzufügen</button>
+        </form>
+    </section>
+{% endblock %}

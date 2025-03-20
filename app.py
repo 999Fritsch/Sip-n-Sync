@@ -139,6 +139,33 @@ class DBHandler:
             return {'name': result[0], 'balance': result[1]}
         return None
 
+    def get_user_transactions(self, user_id):
+        """Fetches all transactions for a specific user."""
+        self.cursor.execute('''
+            SELECT 
+                th.transaction_type,
+                COALESCE(p.name, '') as product_name,
+                th.amount,
+                th.description,
+                th.timestamp
+            FROM transaction_history th
+            LEFT JOIN products p ON th.product_id = p.id
+            WHERE th.user_id = ?
+            ORDER BY th.timestamp DESC
+        ''', (user_id,))
+        
+        transactions = self.cursor.fetchall()
+        return [
+            {
+                'type': t[0],
+                'product': t[1],
+                'amount': t[2],
+                'description': t[3],
+                'timestamp': t[4]
+            }
+            for t in transactions
+        ]
+
 
 # ---------------------------
 # Flask App Setup
@@ -366,6 +393,15 @@ def manage_products():
     user_info = db_handler.get_user_info(session['user_id'])
     return render_template("manage_products.html", products=products, user_info=user_info)
 
+# Add this new route
+@app.route("/transaction_history")
+@login_required
+def transaction_history():
+    transactions = db_handler.get_user_transactions(session['user_id'])
+    user_info = db_handler.get_user_info(session['user_id'])
+    return render_template("transaction_history.html", 
+                         transactions=transactions,
+                         user_info=user_info)
 
 # ---------------------------
 # Run the App
