@@ -1,5 +1,33 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from functools import wraps
+from datetime import datetime, timedelta
+
+# Add these constants at the top of your file
+SESSION_TIMEOUT = 60  # seconds
+LOGIN_REQUIRED_ROUTES = ['index', 'add_money', 'manage_products']  # routes that require login
+
+# Add this decorator function
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if user is logged in
+        if 'user_id' not in session:
+            flash('Bitte melden Sie sich zuerst an', 'error')
+            return redirect(url_for('login'))
+        
+        # Check if session has expired
+        if 'last_activity' in session:
+            last_activity = datetime.fromisoformat(session['last_activity'])
+            if datetime.now() - last_activity > timedelta(seconds=SESSION_TIMEOUT):
+                session.clear()
+                flash('Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an', 'info')
+                return redirect(url_for('login'))
+        
+        # Update last activity
+        session['last_activity'] = datetime.now().isoformat()
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ---------------------------
 # Database Handler Definition
@@ -117,22 +145,54 @@ db_handler = DBHandler()
 # ---------------------------
 # Routes
 # ---------------------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user_id = request.form.get("user_id", "").strip()
+        
+        try:
+            int_user_id = int(user_id)
+            if user_id == "" or (len(user_id) < 8 and int_user_id != 69):
+                flash("Bitte gültige ID eingeben", "error")
+                return redirect(url_for("login"))
+                
+            if not db_handler.check_user_id(int_user_id):
+                flash("ID existiert nicht in der Datenbank", "error")
+                return redirect(url_for("login"))
+                
+            session['user_id'] = int_user_id
+            session['last_activity'] = datetime.now().isoformat()
+            flash("Erfolgreich angemeldet!", "success")
+            return redirect(url_for("index"))
+            
+        except ValueError:
+            flash("Bitte gültige ID eingeben", "error")
+            return redirect(url_for("login"))
+            
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("Erfolgreich abgemeldet", "success")
+    return redirect(url_for("login"))
+
 @app.route("/", methods=["GET", "POST"])
+@login_required
 def index():
-    # Ensure that the cart (warenkorb) exists in the session
+    # Remove user_id validation from POST handling since it's now handled by the session
     if "cart" not in session:
-        session["cart"] = {}  # Dictionary mapping flavor -> count
+        session["cart"] = {}
 
     if request.method == "POST":
         action = request.form.get("action")
         flavor = request.form.get("flavor")
-        # --- Add an item ---
+        
         if action == "add" and flavor:
             cart = session["cart"]
             cart[flavor] = cart.get(flavor, 0) + 1
             session["cart"] = cart
             flash(f"{flavor} wurde hinzugefügt.", "info")
-        # --- Remove an item ---
         elif action == "remove" and flavor:
             cart = session["cart"]
             if flavor in cart:
@@ -142,78 +202,40 @@ def index():
                     cart.pop(flavor)
                 session["cart"] = cart
                 flash(f"{flavor} wurde entfernt.", "info")
-        # --- Process the order ---
         elif action == "order":
-            user_id = request.form.get("user_id", "").strip()
-            # Validate user id similar to the PyQt logic:
-            try:
-                int_user_id = int(user_id)
-            except ValueError:
-                flash("Bitte gültige ID eingeben", "error")
-                return redirect(url_for("index"))
-            if user_id == "" or (len(user_id) < 8 and int_user_id != 69):
-                flash("Bitte gültige ID eingeben", "error")
-                return redirect(url_for("index"))
             if not session["cart"]:
                 flash("Bitte mindestens ein Getränk auswählen", "error")
                 return redirect(url_for("index"))
 
-            # Optionally, check if the user exists:
-            if not db_handler.check_user_id(int_user_id):
-                flash("ID existiert nicht in der Datenbank", "error")
-                return redirect(url_for("index"))
-
-            # Process each item in the cart:
             try:
                 for flavor_name, amount in session["cart"].items():
-                    db_handler.buy_energy_by_flavor(int_user_id, flavor_name, amount)
-                session["cart"] = {}  # Clear the cart on success
+                    db_handler.buy_energy_by_flavor(session['user_id'], flavor_name, amount)
+                session["cart"] = {}
                 flash("Bestellung erfolgreich!", "success")
             except Exception as e:
                 flash(str(e), "error")
+
         return redirect(url_for("index"))
 
-    # For GET request: fetch products from the database
     products = db_handler.fetch_products()
     cart = session.get("cart", {})
     return render_template("order.html", products=products, cart=cart)
 
-
 @app.route("/add_money", methods=["GET", "POST"])
+@login_required
 def add_money():
     if request.method == "POST":
-        user_id = request.form.get("user_id", "").strip()
         amount = request.form.get("amount", "").strip()
-
-        # Validate input
         try:
-            int_user_id = int(user_id)
             float_amount = float(amount)
-        except ValueError:
-            flash("Bitte gültige ID und Betrag eingeben", "error")
-            return redirect(url_for("add_money"))
-
-        # Validate user ID format
-        if user_id == "" or (len(user_id) < 8 and int_user_id != 69):
-            flash("Bitte gültige ID eingeben", "error")
-            return redirect(url_for("add_money"))
-
-        # Check if user exists
-        if not db_handler.check_user_id(int_user_id):
-            flash("ID existiert nicht in der Datenbank", "error")
-            return redirect(url_for("add_money"))
-
-        # Add money to user's account
-        try:
-            db_handler.add_money_to_user(int_user_id, float_amount)
+            db_handler.add_money_to_user(session['user_id'], float_amount)
             flash(f"{float_amount}€ wurden erfolgreich zum Konto hinzugefügt!", "success")
+        except ValueError:
+            flash("Bitte gültigen Betrag eingeben", "error")
         except Exception as e:
             flash(str(e), "error")
-
         return redirect(url_for("add_money"))
-
     return render_template("add_money.html")
-
 
 @app.route("/add_user", methods=["GET", "POST"])
 def add_user():
@@ -258,6 +280,7 @@ def add_user():
 
 
 @app.route("/manage_products", methods=["GET", "POST"])
+@login_required
 def manage_products():
     if request.method == "POST":
         action = request.form.get("action")
@@ -337,4 +360,8 @@ def manage_products():
 # Run the App
 # ---------------------------
 if __name__ == "__main__":
+    app.config.update(
+        PERMANENT_SESSION_LIFETIME=timedelta(seconds=SESSION_TIMEOUT),
+        SESSION_REFRESH_EACH_REQUEST=True
+    )
     app.run(debug=True)
