@@ -2,6 +2,7 @@ import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from functools import wraps
 from datetime import datetime, timedelta
+import os
 
 # Add these constants at the top of your file
 SESSION_TIMEOUT = 60  # seconds
@@ -42,11 +43,17 @@ class DBHandler:
         self.cursor = self.conn.cursor()
 
     def fetch_products(self):
-        """Fetches product id and name from the database."""
-        self.cursor.execute('SELECT id, name FROM products')
+        """Fetches product information including image paths from the database."""
+        self.cursor.execute('SELECT id, name, price, current_amount FROM products')
         products = self.cursor.fetchall()
-        # Return a list of dictionaries for easier template usage.
-        return [{'id': p[0], 'name': p[1]} for p in products]
+        # Return a list of dictionaries for easier template usage
+        return [{
+            'id': p[0], 
+            'name': p[1],
+            'price': p[2],
+            'stock': p[3],
+            'image': f'images/{p[1].lower().replace(" ", "_")}.png'  # Assumes PNG format
+        } for p in products]
 
     def map_flavor_to_id(self):
         """Maps product flavors to their corresponding IDs."""
@@ -172,6 +179,16 @@ class DBHandler:
 # ---------------------------
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Replace with a secure secret key
+
+# Add static folder for product images
+app.static_folder = 'static'
+os.makedirs(os.path.join(app.static_folder, 'images'), exist_ok=True)
+
+# Create symlink from product_images to static/images
+product_images_path = os.path.join(os.path.dirname(__file__), 'product_images')
+static_images_path = os.path.join(app.static_folder, 'images')
+if os.path.exists(product_images_path) and not os.path.exists(static_images_path):
+    os.symlink(product_images_path, static_images_path)
 
 # Initialize the database handler
 db_handler = DBHandler()

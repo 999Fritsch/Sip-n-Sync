@@ -4,13 +4,79 @@
 
 {% block additional_styles %}
 <style>
-    .product-column {
-        float: left;
-        width: 33%;
-        padding: 0px;
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px;
     }
-    .product-column table {
+
+    .product-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .product-image {
+        width: 150px;
+        height: 150px;
+        object-fit: contain;
+        margin-bottom: 10px;
+    }
+
+    .product-name {
+        font-weight: bold;
+        margin: 10px 0;
+    }
+
+    .product-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
         width: 100%;
+    }
+
+    .control-button {
+        width: 100%;
+        padding: 8px 0;
+        border: none;
+        border-radius: 8px;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        transition: background-color 0.2s;
+    }
+
+    .control-button:hover {
+        background: #0056b3;
+    }
+
+    .amount-display {
+        min-width: 30px;
+        font-weight: bold;
+    }
+
+    .cart-summary {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 20px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 100;
+    }
+
+    .price-tag {
+        color: #28a745;
+        font-weight: bold;
+        margin: 5px 0;
     }
 </style>
 {% endblock %}
@@ -19,66 +85,57 @@
     <h1>Energy Drink Bestellung</h1>
     
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul style="list-style: none;">
-          {% for category, message in messages %}
-            <li style="color: 
-                {% if category == 'error' %}red
-                {% elif category == 'success' %}green
-                {% else %}black{% endif %};">
-              {{ message }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
+        {% if messages %}
+            <ul style="list-style: none;">
+                {% for category, message in messages %}
+                    <li style="color: {% if category == 'error' %}red{% elif category == 'success' %}green{% else %}black{% endif %};">
+                        {{ message }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     {% endwith %}
-    
-    {% set chunk_size = 5 %}
-    {% for i in range(0, products|length, chunk_size) %}
-    <div class="product-column">
-        <table border="1" cellpadding="5">
-            <tr>
-                <th>Produkt</th>
-                <th>Aktion</th>
-            </tr>
-            {% for product in products[i:i + chunk_size] %}
-            <tr>
-                <td>{{ product.name }}</td>
-                <td>
-                    <form action="{{ url_for('index') }}" method="post" style="display:inline;">
-                        <input type="hidden" name="action" value="add">
-                        <input type="hidden" name="flavor" value="{{ product.name }}">
-                        <button type="submit">Hinzufügen</button>
-                    </form>
-                    <form action="{{ url_for('index') }}" method="post" style="display:inline;">
+
+    <div class="products-grid">
+        {% for product in products %}
+            <div class="product-card">
+                <img src="{{ url_for('static', filename=product.image) }}" 
+                     alt="{{ product.name }}" 
+                     class="product-image"
+                     onerror="this.src='{{ url_for('static', filename='images/default.png') }}'">
+                <div class="product-name">{{ product.name }}</div>
+                <div class="price-tag">€{{ "%.2f"|format(product.price) }}</div>
+                <div class="product-controls">
+                    <form action="{{ url_for('index') }}" method="post" style="flex: 1;">
                         <input type="hidden" name="action" value="remove">
                         <input type="hidden" name="flavor" value="{{ product.name }}">
-                        <button type="submit">Entfernen</button>
+                        <button type="submit" class="control-button">-</button>
                     </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+                    
+                    <form action="{{ url_for('index') }}" method="post" style="flex: 1;">
+                        <input type="hidden" name="action" value="add">
+                        <input type="hidden" name="flavor" value="{{ product.name }}">
+                        <button type="submit" class="control-button">+</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-    <div style="clear: both;"></div>
-    
-    <h2>Warenkorb</h2>
-    {% if cart %}
-        <ul>
-            {% for flavor, amount in cart.items() %}
-                <li>{{ flavor }} x{{ amount }}</li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>Ihr Warenkorb ist leer.</p>
-    {% endif %}
-    
-    <h2>Bestellung aufgeben</h2>
-    <form action="{{ url_for('index') }}" method="post">
-        <label for="user_id">Benutzer-ID:</label>
-        <input type="text" name="user_id" id="user_id" required>
-        <input type="hidden" name="action" value="order">
-        <button type="submit">Bestellen</button>
-    </form>
+
+    <div class="cart-summary">
+        <h2>Warenkorb</h2>
+        {% if cart %}
+            <ul>
+                {% for flavor, amount in cart.items() %}
+                    <li>{{ flavor }} x{{ amount }}</li>
+                {% endfor %}
+            </ul>
+            <form action="{{ url_for('index') }}" method="post">
+                <input type="hidden" name="action" value="order">
+                <button type="submit" class="btn">Bestellen</button>
+            </form>
+        {% else %}
+            <p>Ihr Warenkorb ist leer.</p>
+        {% endif %}
+    </div>
 {% endblock %}
