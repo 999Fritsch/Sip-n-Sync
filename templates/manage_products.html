@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="user-info" style="background-color: #f8f9fa; padding: 10px; margin-bottom: 20px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center;">
+        {% if user_info %}
+            <p style="margin: 0;">
+                <strong>Benutzer:</strong> {{ user_info.name }}
+                <span style="margin-left: 20px;">
+                    <strong>Kontostand:</strong> {{ "%.2f"|format(user_info.balance) }}€
+                </span>
+            </p>
+            <a href="{{ url_for('logout') }}" style="text-decoration: none; background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 3px;">Abmelden</a>
+        {% endif %}
+    </div>
     <div class="container">
         <h1>Produkte verwalten</h1>
         
@@ -78,7 +89,6 @@
             <a href="{{ url_for('add_money') }}" class="btn">Geld hinzufügen</a>
             <a href="{{ url_for('add_user') }}" class="btn">Neuen Benutzer erstellen</a>
             <a href="{{ url_for('manage_products') }}" class="btn">Produkte verwalten</a>
-            <a href="{{ url_for('logout') }}" class="btn">Abmelden</a>
         </div>
     </div>
 </body>

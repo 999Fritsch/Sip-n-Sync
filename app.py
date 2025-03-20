@@ -131,6 +131,14 @@ class DBHandler:
         ''', (transaction_type, user_id, product_id, amount, description))
         self.conn.commit()
 
+    def get_user_info(self, user_id):
+        """Fetches user name and balance from the database."""
+        self.cursor.execute('SELECT name, money_amount FROM users WHERE id = ?', (user_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return {'name': result[0], 'balance': result[1]}
+        return None
+
 
 # ---------------------------
 # Flask App Setup
@@ -219,7 +227,8 @@ def index():
 
     products = db_handler.fetch_products()
     cart = session.get("cart", {})
-    return render_template("order.html", products=products, cart=cart)
+    user_info = db_handler.get_user_info(session['user_id'])
+    return render_template("order.html", products=products, cart=cart, user_info=user_info)
 
 @app.route("/add_money", methods=["GET", "POST"])
 @login_required
@@ -235,7 +244,8 @@ def add_money():
         except Exception as e:
             flash(str(e), "error")
         return redirect(url_for("add_money"))
-    return render_template("add_money.html")
+    user_info = db_handler.get_user_info(session['user_id'])
+    return render_template("add_money.html", user_info=user_info)
 
 @app.route("/add_user", methods=["GET", "POST"])
 def add_user():
@@ -353,7 +363,8 @@ def manage_products():
 
     # For GET request: fetch products from the database
     products = db_handler.fetch_products()
-    return render_template("manage_products.html", products=products)
+    user_info = db_handler.get_user_info(session['user_id'])
+    return render_template("manage_products.html", products=products, user_info=user_info)
 
 
 # ---------------------------
