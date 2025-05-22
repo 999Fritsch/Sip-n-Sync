@@ -1,50 +1,54 @@
 import sqlite3
-from datetime import datetime
-import shutil
 
-# Backup the old database
-shutil.copy2('energy_drinks.db', 'energy_drinks_backup.db')
-
-# Connect to the database
-conn = sqlite3.connect('energy_drinks.db')
-cursor = conn.cursor()
-
-# Create the new transaction_history table
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS transaction_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transaction_type TEXT NOT NULL,
-        user_id INTEGER,
-        product_id INTEGER,
-        amount REAL NOT NULL,
-        description TEXT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (product_id) REFERENCES products(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-''')
-
-# Migrate existing purchase history to transaction history
-cursor.execute('SELECT product_id, user_id, amount, purchase_date FROM purchase_history')
-purchases = cursor.fetchall()
-
-for product_id, user_id, amount, purchase_date in purchases:
-    # Get the price at the time (using current price as we don't have historical prices)
-    cursor.execute('SELECT price FROM products WHERE id = ?', (product_id,))
-    price = cursor.fetchone()[0]
-    total_cost = price * amount
-    
+def create_products_table_if_not_exists(cursor):
+    """
+    Creates the 'products' table if it doesn't already exist.
+    """
     cursor.execute('''
-        INSERT INTO transaction_history 
-        (transaction_type, user_id, product_id, amount, description, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', ('PURCHASE', user_id, product_id, amount, f"Purchase at €{total_cost}", purchase_date))
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            current_amount INTEGER NOT NULL,
+            price REAL NOT NULL
+        )
+    ''')
+    print("Ensured 'products' table exists.")
 
-print(f"Migrated {len(purchases)} purchase records")
+def migrate_database(db_name='energy_drinks.db'):
+    """
+    Creates the 'products' table if it doesn't exist, then
+    adds an 'image_filename' column to the 'products' table in the specified database
+    if it doesn't already exist.
 
-# Commit changes and close connection
-conn.commit()
-conn.close()
+    Args:
+        db_name (str): The name of the database file.
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
 
-print("Migration completed successfully!")
-print("A backup of your original database was created as 'energy_drinks_backup.db'")
+        # Step 1: Ensure the products table exists
+        create_products_table_if_not_exists(cursor)
+
+        # Step 2: Add the image_filename column if it doesn't exist
+        cursor.execute("PRAGMA table_info(products)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'image_filename' not in columns:
+            cursor.execute("ALTER TABLE products ADD COLUMN image_filename TEXT DEFAULT 'default.png'")
+            print("Database migration successful: 'image_filename' column added to 'products' table.")
+        else:
+            print("'image_filename' column already exists in 'products' table.")
+
+        conn.commit()
+
+    except sqlite3.Error as e:
+        print(f"Database migration failed: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+if __name__ == '__main__':
+    migrate_database()

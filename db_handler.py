@@ -18,6 +18,59 @@ class DBHandler:
         # Return a list of dictionaries for easier template usage.
         return [{'id': p[0], 'name': p[1]} for p in products]
 
+    def get_product_details(self, product_id):
+        """
+        Fetches id, name, current_amount, price, and image_filename for a given product_id.
+
+        Args:
+            product_id (int): The ID of the product to fetch.
+
+        Returns:
+            dict: A dictionary containing product details, or None if not found.
+        """
+        self.cursor.execute('SELECT id, name, current_amount, price, image_filename FROM products WHERE id = ?', (product_id,))
+        product = self.cursor.fetchone()
+        if product:
+            return {'id': product[0], 'name': product[1], 'current_amount': product[2], 'price': product[3], 'image_filename': product[4]}
+        return None
+
+    def get_all_products_with_details(self):
+        """
+        Fetches id, name, current_amount, price, and image_filename for all products.
+
+        Returns:
+            list: A list of dictionaries, each containing product details.
+        """
+        self.cursor.execute('SELECT id, name, current_amount, price, image_filename FROM products')
+        products = self.cursor.fetchall()
+        return [{'id': p[0], 'name': p[1], 'current_amount': p[2], 'price': p[3], 'image_filename': p[4]} for p in products]
+
+    def update_product_stock(self, product_id, new_stock):
+        """
+        Updates the current_amount of a product to new_stock.
+
+        Args:
+            product_id (int): The ID of the product to update.
+            new_stock (int): The new stock amount.
+
+        Returns:
+            None
+        """
+        self.cursor.execute('UPDATE products SET current_amount = ? WHERE id = ?', (new_stock, product_id))
+        self.conn.commit()
+
+    def delete_product(self, product_id):
+        """
+        Deletes a product from the products table based on product_id.
+
+        Args:
+            product_id (int): The ID of the product to delete.
+
+        Returns:
+            None
+        """
+        self.cursor.execute('DELETE FROM products WHERE id = ?', (product_id,))
+        self.conn.commit()
 
     def create_user(self, user_id, name, money_amount):
         """
@@ -34,7 +87,7 @@ class DBHandler:
         self.cursor.execute('INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
         self.conn.commit()
 
-    def create_product(self, name, current_amount, price):
+    def create_product(self, name, current_amount, price, image_filename):
         """
         Inserts a new product into the products table.
 
@@ -42,11 +95,12 @@ class DBHandler:
             name (str): The name of the product.
             current_amount (int): The current amount of the product in stock.
             price (float): The price of the product.
+            image_filename (str): The filename of the product image.
 
         Returns:
             None
         """
-        self.cursor.execute('INSERT INTO products (name, current_amount, price) VALUES (?, ?, ?)', (name, current_amount, price))
+        self.cursor.execute('INSERT INTO products (name, current_amount, price, image_filename) VALUES (?, ?, ?, ?)', (name, current_amount, price, image_filename))
         self.conn.commit()
 
     def add_product_storage(self, product_id, amount):

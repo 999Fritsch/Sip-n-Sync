@@ -1,12 +1,17 @@
 import sqlite3
+import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from functools import wraps
 from datetime import datetime, timedelta
 import os
+from werkzeug.utils import secure_filename
+from db_handler import DBHandler # Import DBHandler
 
 # Add these constants at the top of your file
 SESSION_TIMEOUT = 60  # seconds
 LOGIN_REQUIRED_ROUTES = ['index', 'add_money', 'manage_products']  # routes that require login
+UPLOAD_FOLDER = 'static/images'
+
 
 # Add this decorator function
 def login_required(f):
@@ -31,164 +36,36 @@ def login_required(f):
     return decorated_function
 
 # ---------------------------
-# Database Handler Definition
-# ---------------------------
-class DBHandler:
-    def __init__(self, db_name='energy_drinks.db'):
-        self.connect(db_name)
-        self.map_flavor_to_id()
-
-    def connect(self, db_name='energy_drinks.db'):
-        self.conn = sqlite3.connect(db_name, check_same_thread=False)  # note: check_same_thread=False for Flask
-        self.cursor = self.conn.cursor()
-
-    def fetch_products(self):
-        """Fetches product information including image paths from the database."""
-        self.cursor.execute('SELECT id, name, price, current_amount FROM products')
-        products = self.cursor.fetchall()
-        # Return a list of dictionaries for easier template usage
-        return [{
-            'id': p[0], 
-            'name': p[1],
-            'price': p[2],
-            'stock': p[3],
-            'image': f'images/{p[1].lower().replace(" ", "_")}.png'  # Assumes PNG format
-        } for p in products]
-
-    def map_flavor_to_id(self):
-        """Maps product flavors to their corresponding IDs."""
-        self.cursor.execute('SELECT id, name FROM products')
-        products = self.cursor.fetchall()
-        self.flavors = {name: product_id for product_id, name in products}
-        return self.flavors
-
-    def buy_energy_by_id(self, user_id, product_id, amount):
-        """Processes the purchase of an energy drink by product ID."""
-        self.cursor.execute('SELECT current_amount, price FROM products WHERE id = ?', (product_id,))
-        product = self.cursor.fetchone()
-        if product is None:
-            raise ValueError("Produkt nicht gefunden")
-
-        current_amount, price = product
-        # if current_amount < amount:
-        #     raise ValueError("Nicht genügend Produkt auf Lager")
-
-        self.cursor.execute('SELECT money_amount FROM users WHERE id = ?', (user_id,))
-        user = self.cursor.fetchone()
-        if user is None:
-            raise ValueError("Benutzer nicht gefunden")
-
-        money_amount = user[0]
-        total_cost = price * amount
-
-        # Update product stock and user money
-        self.cursor.execute('UPDATE products SET current_amount = current_amount - ? WHERE id = ?', (amount, product_id))
-        self.cursor.execute('UPDATE users SET money_amount = money_amount - ? WHERE id = ?', (total_cost, user_id))
-        self.cursor.execute('INSERT INTO purchase_history (product_id, user_id, amount) VALUES (?, ?, ?)', (product_id, user_id, amount))
-        self.log_transaction('PURCHASE', user_id=user_id, product_id=product_id, amount=amount, description=f"Purchase at €{total_cost}")
-        self.conn.commit()
-
-    def buy_energy_by_flavor(self, user_id, flavor_name, amount):
-        """Processes a purchase by flavor name."""
-        if flavor_name not in self.flavors:
-            raise KeyError(f"Flavor '{flavor_name}' not found")
-        product_id = self.flavors[flavor_name]
-        self.buy_energy_by_id(user_id, product_id, amount)
-
-    def check_user_id(self, user_id):
-        """Checks if a user id exists in the database."""
-        self.cursor.execute('SELECT COUNT(*) FROM users WHERE id = ?', (user_id,))
-        result = self.cursor.fetchone()
-        return result[0] > 0
-
-    def close(self):
-        self.conn.close()
-
-    def create_user(self, user_id, name, money_amount):
-        """Creates a new user in the database."""
-        self.cursor.execute('INSERT OR IGNORE INTO users (id, name, money_amount) VALUES (?, ?, ?)', (user_id, name, money_amount))
-        self.log_transaction('NEW_USER', user_id=user_id, amount=money_amount, description=f"New user created: {name}")
-        self.conn.commit()
-
-    def create_product(self, name, current_amount, price):
-        """Inserts a new product into the products table."""
-        self.cursor.execute('INSERT INTO products (name, current_amount, price) VALUES (?, ?, ?)', (name, current_amount, price))
-        product_id = self.cursor.lastrowid
-        self.log_transaction('NEW_PRODUCT', product_id=product_id, amount=current_amount, description=f"New product created: {name} at €{price}")
-        self.conn.commit()
-
-    def add_product_storage(self, product_id, amount):
-        """Adds the specified amount to the current storage of the product."""
-        self.cursor.execute('UPDATE products SET current_amount = current_amount + ? WHERE id = ?', (amount, product_id))
-        self.log_transaction('REFILL', product_id=product_id, amount=amount)
-        self.conn.commit()
-
-    def add_money_to_user(self, user_id, amount):
-        """Adds the specified amount of money to the user's account."""
-        self.cursor.execute('UPDATE users SET money_amount = money_amount + ? WHERE id = ?', (amount, user_id))
-        self.log_transaction('ADD_MONEY', user_id=user_id, amount=amount)
-        self.conn.commit()
-
-    def log_transaction(self, transaction_type, user_id=None, product_id=None, amount=0, description=None):
-        """Logs any transaction in the transaction_history table."""
-        self.cursor.execute('''
-            INSERT INTO transaction_history 
-            (transaction_type, user_id, product_id, amount, description)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (transaction_type, user_id, product_id, amount, description))
-        self.conn.commit()
-
-    def get_user_info(self, user_id):
-        """Fetches user name and balance from the database."""
-        self.cursor.execute('SELECT name, money_amount FROM users WHERE id = ?', (user_id,))
-        result = self.cursor.fetchone()
-        if result:
-            return {'name': result[0], 'balance': result[1]}
-        return None
-
-    def get_user_transactions(self, user_id):
-        """Fetches all transactions for a specific user."""
-        self.cursor.execute('''
-            SELECT 
-                th.transaction_type,
-                COALESCE(p.name, '') as product_name,
-                th.amount,
-                th.description,
-                th.timestamp
-            FROM transaction_history th
-            LEFT JOIN products p ON th.product_id = p.id
-            WHERE th.user_id = ?
-            ORDER BY th.timestamp DESC
-        ''', (user_id,))
-        
-        transactions = self.cursor.fetchall()
-        return [
-            {
-                'type': t[0],
-                'product': t[1],
-                'amount': t[2],
-                'description': t[3],
-                'timestamp': t[4]
-            }
-            for t in transactions
-        ]
-
-
-# ---------------------------
 # Flask App Setup
 # ---------------------------
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Replace with a secure secret key
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Add static folder for product images
-app.static_folder = 'static'
-os.makedirs(os.path.join(app.static_folder, 'images'), exist_ok=True)
+# Ensure the upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Create symlink from product_images to static/images
-product_images_path = os.path.join(os.path.dirname(__file__), 'product_images')
-static_images_path = os.path.join(app.static_folder, 'images')
-if os.path.exists(product_images_path) and not os.path.exists(static_images_path):
-    os.symlink(product_images_path, static_images_path)
+# Create symlink from product_images to static/images (if product_images exists)
+# This part might need adjustment based on actual project structure for product_images source
+product_images_source_path = os.path.join(os.path.dirname(__file__), 'product_images')
+static_images_symlink_path = os.path.join(app.static_folder, 'images') # app.static_folder is 'static'
+
+# Check if product_images_source_path exists and is a directory
+if os.path.isdir(product_images_source_path):
+    # Check if the target static/images is not already a symlink or a directory
+    if not os.path.islink(static_images_symlink_path) and not os.path.isdir(static_images_symlink_path):
+        try:
+            os.symlink(product_images_source_path, static_images_symlink_path, target_is_directory=True)
+            print(f"Symlink created from {product_images_source_path} to {static_images_symlink_path}")
+        except OSError as e:
+            print(f"Error creating symlink: {e}")
+    elif os.path.islink(static_images_symlink_path):
+        print(f"Symlink {static_images_symlink_path} already exists.")
+    elif os.path.isdir(static_images_symlink_path):
+        print(f"Directory {static_images_symlink_path} already exists (not a symlink). Will use it for uploads.")
+else:
+    print(f"Source product_images directory '{product_images_source_path}' not found. Uploaded images will be saved directly in '{app.config['UPLOAD_FOLDER']}'.")
+
 
 # Initialize the database handler
 db_handler = DBHandler()
@@ -269,9 +146,12 @@ def index():
 
         return redirect(url_for("index"))
 
-    products = db_handler.fetch_products()
+    # Use get_all_products_with_details to ensure image_filename is available for the template
+    products = db_handler.get_all_products_with_details()
     cart = session.get("cart", {})
     user_info = db_handler.get_user_info(session['user_id'])
+    # Note: The order.html template will need to be updated to use product.image_filename
+    # and construct the path like url_for('static', filename='images/' + product.image_filename)
     return render_template("order.html", products=products, cart=cart, user_info=user_info)
 
 @app.route("/add_money", methods=["GET", "POST"])
@@ -341,81 +221,169 @@ def manage_products():
 
         if action == "create":
             name = request.form.get("name", "").strip()
-            amount = request.form.get("amount", "").strip()
+            amount = request.form.get("amount", "").strip() # This is current_amount / stock
             price = request.form.get("price", "").strip()
-
-            # Validate input
-            try:
-                float_amount = float(amount)
-                float_price = float(price)
-            except ValueError:
-                flash("Bitte gültige Werte für Menge und Preis eingeben", "error")
-                return redirect(url_for("manage_products"))
+            image_file = request.files.get('image')
+            image_filename = 'default.png'
 
             if not name:
                 flash("Bitte einen Produktnamen eingeben", "error")
                 return redirect(url_for("manage_products"))
-
-            # Create new product
+            
             try:
-                db_handler.create_product(name, float_amount, float_price)
+                current_amount_int = int(amount)
+                price_float = float(price)
+            except ValueError:
+                flash("Bitte gültige Werte für Menge und Preis eingeben", "error")
+                return redirect(url_for("manage_products"))
+
+            if image_file and image_file.filename != '':
+                if '.' in image_file.filename and image_file.filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}:
+                    image_filename = secure_filename(image_file.filename)
+                    image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+                    try:
+                        image_file.save(image_path)
+                    except Exception as e:
+                        flash(f"Fehler beim Speichern des Bildes: {e}", "error")
+                        return redirect(url_for("manage_products"))
+                else:
+                    flash("Ungültiges Bildformat. Nur PNG, JPG, JPEG, GIF erlaubt.", "error")
+                    return redirect(url_for("manage_products"))
+            
+            try:
+                db_handler.create_product(name, current_amount_int, price_float, image_filename)
                 flash(f"Produkt {name} wurde erfolgreich erstellt!", "success")
-                # Refresh flavor mappings after creating new product
-                db_handler.map_flavor_to_id()
+                db_handler.map_flavor_to_id() # Refresh flavor map
             except Exception as e:
                 flash(str(e), "error")
+            return redirect(url_for("manage_products"))
 
-        elif action == "refill":
+        elif action == "refill": # Kept for now, might be replaced by update_stock
             product_id = request.form.get("product_id")
             amount = request.form.get("refill_amount", "").strip()
 
-            # Validate input
             try:
                 int_product_id = int(product_id)
-                float_amount = float(amount)
+                float_amount_refill = float(amount) # Renamed to avoid conflict
             except ValueError:
-                flash("Bitte gültige Werte eingeben", "error")
+                flash("Bitte gültige Werte eingeben für Refill", "error")
                 return redirect(url_for("manage_products"))
 
-            # Add to stock
             try:
-                db_handler.add_product_storage(int_product_id, float_amount)
-                flash(f"Lagerbestand wurde um {float_amount} erhöht!", "success")
+                db_handler.add_product_storage(int_product_id, float_amount_refill)
+                flash(f"Lagerbestand wurde um {float_amount_refill} erhöht!", "success")
             except Exception as e:
                 flash(str(e), "error")
-
-        elif action == "deposit":
-            amount = request.form.get("deposit_amount", "").strip()
-
-            # Validate input
+            return redirect(url_for("manage_products"))
+            
+        elif action == "deposit": # This action seems unrelated to product management directly
+            amount_deposit = request.form.get("deposit_amount", "").strip() # Renamed
             try:
-                float_amount = float(amount)
-                if float_amount <= 0:
-                    raise ValueError()
+                float_amount_deposit = float(amount_deposit)
+                if float_amount_deposit <= 0:
+                    raise ValueError("Deposit amount must be positive")
             except ValueError:
                 flash("Bitte gültigen Pfandbetrag eingeben", "error")
                 return redirect(url_for("manage_products"))
-
-            # Add deposit to Zugkasse (ID 69)
             try:
-                db_handler.add_money_to_user(69, float_amount)
-                flash(f"Pfand in Höhe von {float_amount}€ wurde zur Zugkasse hinzugefügt!", "success")
+                db_handler.add_money_to_user(69, float_amount_deposit) # Assuming user ID 69 is for "Zugkasse"
+                flash(f"Pfand in Höhe von {float_amount_deposit}€ wurde zur Zugkasse hinzugefügt!", "success")
             except Exception as e:
                 flash(str(e), "error")
+            return redirect(url_for("manage_products"))
 
-        return redirect(url_for("manage_products"))
-
-    # For GET request: fetch products from the database
-    products = db_handler.fetch_products()
+    # For GET request: fetch all products with details
+    products = db_handler.get_all_products_with_details() # Updated to use new DB handler method
     user_info = db_handler.get_user_info(session['user_id'])
     return render_template("manage_products.html", products=products, user_info=user_info)
 
-# Add this new route
+# New routes for product manipulation
+
+@app.route("/product/update_stock/<int:product_id>", methods=["POST"])
+@login_required
+def update_product_stock_route(product_id):
+    new_stock_str = request.form.get("new_stock")
+    if new_stock_str is None:
+        flash("Kein neuer Lagerbestand angegeben.", "error")
+        return redirect(url_for("manage_products"))
+    try:
+        new_stock = int(new_stock_str)
+        if new_stock < 0:
+            flash("Lagerbestand kann nicht negativ sein.", "error")
+        else:
+            db_handler.update_product_stock(product_id, new_stock)
+            flash("Lagerbestand erfolgreich aktualisiert.", "success")
+    except ValueError:
+        flash("Ungültiger Wert für Lagerbestand.", "error")
+    except Exception as e:
+        flash(f"Fehler beim Aktualisieren des Lagerbestands: {str(e)}", "error")
+    return redirect(url_for("manage_products"))
+
+@app.route("/product/increment_stock/<int:product_id>", methods=["POST"])
+@login_required
+def increment_product_stock_route(product_id):
+    try:
+        product = db_handler.get_product_details(product_id)
+        if product:
+            current_stock = product['current_amount']
+            db_handler.update_product_stock(product_id, current_stock + 1)
+            flash("Lagerbestand um 1 erhöht.", "success")
+        else:
+            flash("Produkt nicht gefunden.", "error")
+    except Exception as e:
+        flash(f"Fehler beim Erhöhen des Lagerbestands: {str(e)}", "error")
+    return redirect(url_for("manage_products"))
+
+@app.route("/product/decrement_stock/<int:product_id>", methods=["POST"])
+@login_required
+def decrement_product_stock_route(product_id):
+    try:
+        product = db_handler.get_product_details(product_id)
+        if product:
+            current_stock = product['current_amount']
+            db_handler.update_product_stock(product_id, max(0, current_stock - 1))
+            flash("Lagerbestand um 1 verringert.", "success")
+        else:
+            flash("Produkt nicht gefunden.", "error")
+    except Exception as e:
+        flash(f"Fehler beim Verringern des Lagerbestands: {str(e)}", "error")
+    return redirect(url_for("manage_products"))
+
+@app.route("/product/delete/<int:product_id>", methods=["POST"])
+@login_required
+def delete_product_route(product_id):
+    try:
+        product_details = db_handler.get_product_details(product_id)
+        if product_details:
+            image_filename_to_delete = product_details.get('image_filename')
+            db_handler.delete_product(product_id)
+            flash("Produkt erfolgreich gelöscht.", "success")
+
+            if image_filename_to_delete and image_filename_to_delete != 'default.png':
+                try:
+                    image_path_to_delete = os.path.join(app.config['UPLOAD_FOLDER'], image_filename_to_delete)
+                    if os.path.exists(image_path_to_delete):
+                        os.remove(image_path_to_delete)
+                        flash(f"Bild '{image_filename_to_delete}' wurde ebenfalls gelöscht.", "info")
+                except Exception as e:
+                    flash(f"Fehler beim Löschen des Produktbildes: {str(e)}", "warning")
+            db_handler.map_flavor_to_id() # Refresh flavor map
+        else:
+            flash("Produkt nicht gefunden.", "error")
+    except Exception as e:
+        flash(f"Fehler beim Löschen des Produkts: {str(e)}", "error")
+    return redirect(url_for("manage_products"))
+
 @app.route("/transaction_history")
 @login_required
 def transaction_history():
-    transactions = db_handler.get_user_transactions(session['user_id'])
-    user_info = db_handler.get_user_info(session['user_id'])
+    user_id = session.get('user_id')
+    if user_id is None: # Should be caught by @login_required, but as a safeguard
+        flash("Benutzer nicht angemeldet.", "error")
+        return redirect(url_for('login'))
+        
+    transactions = db_handler.get_user_transactions(user_id)
+    user_info = db_handler.get_user_info(user_id)
     return render_template("transaction_history.html", 
                          transactions=transactions,
                          user_info=user_info)
@@ -428,4 +396,8 @@ if __name__ == "__main__":
         PERMANENT_SESSION_LIFETIME=timedelta(seconds=SESSION_TIMEOUT),
         SESSION_REFRESH_EACH_REQUEST=True
     )
+    # Make sure the UPLOAD_FOLDER exists
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+        
     app.run(debug=True)
