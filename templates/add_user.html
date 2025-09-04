@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Benutzer hinzufügen - Sip-n-Sync{% endblock %}
+
+{% block content %}
+    <h1>Neuen Benutzer hinzufügen</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('add_user') }}">
+        <div class="form-group">
+            <label for="user_id">Benutzer ID:</label>
+            <input type="number" id="user_id" name="user_id" required>
+            <small>Mindestens 8 Stellen</small>
+        </div>
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="initial_amount">Startguthaben (€):</label>
+            <input type="number" id="initial_amount" name="initial_amount" step="0.01" min="0" value="0">
+        </div>
+        <button type="submit" class="btn">Benutzer erstellen</button>
+    </form>
+{% endblock %}
